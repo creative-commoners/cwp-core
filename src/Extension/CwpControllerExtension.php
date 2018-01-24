@@ -20,6 +20,7 @@ class CwpControllerExtension extends Extension implements PermissionProvider
 
     /**
      * Enables SSL redirections - disabling not recommended as it will prevent forcing SSL on admin panel.
+     * @deprecated use `CanonicalURLMiddleware.forceSSL` instead
      *
      * @config
      * @var bool
@@ -36,6 +37,8 @@ class CwpControllerExtension extends Extension implements PermissionProvider
      *
      * Set to a domain string (e.g. 'example.com') to force that domain.
      *
+     * @deprecated use `CanonicalURLMiddleware.forceSSLDomain` instead
+     *
      * @config
      * @var string
      */
@@ -45,6 +48,8 @@ class CwpControllerExtension extends Extension implements PermissionProvider
      * Enables the BasicAuth protection on all test environments. Disable with caution - it will open up
      * all your UAT and test environments to the world.
      *
+     * @deprecated use `BasicAuth.entire_site_protected` in a test config conditional instead
+     *
      * @config
      * @var bool
      */
@@ -53,6 +58,8 @@ class CwpControllerExtension extends Extension implements PermissionProvider
     /**
      * Enables the BasicAuth protection on all live environments.
      * Useful for securing sites prior to public launch.
+     *
+     * @deprecated use `BasicAuth.entire_site_protected` in a live config conditional instead
      *
      * @config
      * @var bool
@@ -105,6 +112,7 @@ class CwpControllerExtension extends Extension implements PermissionProvider
         $allowWithoutAuth = false;
 
         // Allow whitelisting IPs for bypassing the basic auth.
+        // @todo - Shift to CwpBasicAuthMiddleware (subclass and DI)
         if (Environment::getEnv('CWP_IP_BYPASS_BASICAUTH')) {
             $remote = $_SERVER['REMOTE_ADDR'];
             $bypass = explode(',', Environment::getEnv('CWP_IP_BYPASS_BASICAUTH'));
@@ -115,6 +123,8 @@ class CwpControllerExtension extends Extension implements PermissionProvider
         }
 
         // First, see if we can get a member to act on, either from a changepassword token or the session
+        // @todo - Shift to CwpBasicAuthMiddleware (subclass and DI)
+        // Possibly this should be shifted to core as well
         if (isset($_REQUEST['m']) && isset($_REQUEST['t'])) {
             $member = Member::get()->filter('ID', (int) $_REQUEST['m'])->first();
 
@@ -130,6 +140,14 @@ class CwpControllerExtension extends Extension implements PermissionProvider
         }
 
         // Then, if they have the right permissions, check the allowed URLs
+        // @todo add to BasicAuthMiddleware.URLPatterns
+        // [
+        //   '/^Security\/changepassword/' => 'ACCESS_UAT_SERVER',
+        //   '/^Security\/ChangePasswordForm/' => 'ACCESS_UAT_SERVER',
+        //   '/.*/' => true,
+        // ]
+        // Otherwise code directly into CwpBasicAuthMiddleware
+        //
         $existingMemberCanAccessUAT = $member && $this->callWithSubsitesDisabled(function () use ($member) {
             return Permission::checkMember($member, 'ACCESS_UAT_SERVER');
         });
